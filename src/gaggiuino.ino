@@ -835,7 +835,18 @@ static inline void sysHealthCheck(float pressureThreshold) {
     systemHealthTimer = millis() + HEALTHCHECK_EVERY;
     return;
   }
+  
+  // HX_SYSTEM temp and pressure is heated by main boiler, it is always higher than normal for thermosyphone effect,
+  // so we don't want to release pressure
+  #ifndef HX_SYSTEM
   // Should enter the block every "systemHealthTimer" seconds
+  releasePressure(pressureThreshold);
+  #endif
+
+  #endif
+}
+
+static void releasePressure(float pressureThreshold) {
   if (millis() >= systemHealthTimer) {
     while (currentState.smoothedPressure >= pressureThreshold && currentState.temperature < 100.f)
     {
@@ -879,7 +890,6 @@ static inline void sysHealthCheck(float pressureThreshold) {
       }
     }
   }
-  #endif
 }
 
 // Function to track time since system has started
@@ -889,6 +899,11 @@ static unsigned long getTimeSinceInit(void) {
 }
 
 static void fillBoiler(void) {
+  //skip fill boiler for HX systems because they have a different fill mechanism
+  #ifdef HX_SYSTEM
+  return;
+  #endif
+
   #if defined LEGO_VALVE_RELAY || defined SINGLE_BOARD
 
   if (systemState.startupInitFinished) {
