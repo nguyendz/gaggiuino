@@ -900,11 +900,14 @@ static unsigned long getTimeSinceInit(void) {
 
 static void fillBoiler(void) {
   //skip fill boiler for HX systems because they have a different fill mechanism
-  #ifdef HX_SYSTEM
-  return;
-  #endif
+#ifdef HX_SYSTEM
 
-  #if defined LEGO_VALVE_RELAY || defined SINGLE_BOARD
+  systemState.startupInitFinished = true; 
+  return;
+
+#endif
+
+#if defined LEGO_VALVE_RELAY || defined SINGLE_BOARD 
 
   if (systemState.startupInitFinished) {
     return;
