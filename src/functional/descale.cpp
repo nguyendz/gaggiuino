@@ -1,6 +1,6 @@
 /* 09:32 15/03/2023 - change triggering comment */
 #include "descale.h"
-#include "just_do_coffee.h"
+#include "heater.h"
 #include "../peripherals/internal_watchdog.h"
 #include "../lcd/lcd.h"
 
@@ -71,7 +71,8 @@ void deScale(eepromValues_t &runningCfg, const SensorState &currentState) {
       }
       break;
   }
-  justDoCoffee(runningCfg, currentState, false);
+  lcdTargetState((int)HEATING::MODE_brew); // setting the target mode to "brew temp"
+  heaterControl(runningCfg, currentState, false);
 }
 
 void solenoidBeat() {

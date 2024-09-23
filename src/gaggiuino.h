@@ -17,7 +17,7 @@
 #include "sensors_state.h"
 #include "system_state.h"
 #include "functional/descale.h"
-#include "functional/just_do_coffee.h"
+#include "functional/heater.h"
 #include "functional/predictive_weight.h"
 #include "profiling_phases.h"
 #include "peripherals/esp_comms.h"

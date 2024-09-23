@@ -306,14 +306,23 @@ static void modeSelect(void) {
       nonBrewModeActive = true;
       if (!currentState.steamSwitchState) steamTime = millis();
       backFlush(currentState);
-      brewActive ? setBoilerOff() : justDoCoffee(runningCfg, currentState, false);
+      if (brewActive) {
+        setBoilerOff() ;
+      } else {
+        lcdTargetState((int)HEATING::MODE_brew); // setting the target mode to "brew temp"
+        heaterControl(runningCfg, currentState, false);
+      }
       break;
     case OPERATION_MODES::OPMODE_steam:
+      //this is a mess, steamctrl should be called only once, but it's called twice
+
       nonBrewModeActive = true;
+      currentState.steamSwitchState ? lcdTargetState((int)HEATING::MODE_steam) : lcdTargetState((int)HEATING::MODE_brew); // setting the steam/hot water target temp
       steamCtrl(runningCfg, currentState);
 
       if (!currentState.steamSwitchState) {
         brewActive ? flushActivated() : flushDeactivated();
+        currentState.steamSwitchState ? lcdTargetState((int)HEATING::MODE_steam) : lcdTargetState((int)HEATING::MODE_brew); // setting the steam/hot water target temp
         steamCtrl(runningCfg, currentState);
         pageValuesRefresh();
       }
@@ -717,19 +726,24 @@ static void profiling(void) {
     closeValve();
   }
   // Keep that water at temp
-  justDoCoffee(runningCfg, currentState, brewActive);
+  lcdTargetState((int)HEATING::MODE_brew); 
+  heaterControl(runningCfg, currentState, brewActive);
 }
 
 static void manualFlowControl(void) {
   if (brewActive) {
     openValve();
-    float flow_reading = lcdGetManualFlowVol() / 10.f ;
-    setPumpFlow(flow_reading, 0.f, currentState);
+//    float flow_reading = lcdGetManualFlowVol() / 10.f ;
+//    setPumpFlow(flow_reading, 0.f, currentState);
+
+    float manualPercentage = lcdGetManualFlowVol() / 10.f ;
+    setPumpToRawValue(manualPercentage * PUMP_RANGE);
   } else {
     setPumpOff();
     closeValve();
   }
-  justDoCoffee(runningCfg, currentState, brewActive);
+  lcdTargetState((int)HEATING::MODE_brew); 
+  heaterControl(runningCfg, currentState, brewActive);
 }
 
 //#############################################################################################
@@ -800,6 +814,8 @@ static inline void sysHealthCheck(float pressureThreshold) {
 
   /* This *while* is here to prevent situations where the system failed to get a temp reading and temp reads as 0 or -7(cause of the offset)
   If we would use a non blocking function then the system would keep the SSR in HIGH mode which would most definitely cause boiler overheating */
+  // skip temp check for HX systems, they have a different temp control mechanism
+#ifndef HX_SYSTEM  
   while (currentState.temperature <= 0.0f || currentState.temperature == NAN || currentState.temperature >= 170.0f) {
     //Reloading the watchdog timer, if this function fails to run MCU is rebooted
     watchdogReload();
@@ -815,6 +831,7 @@ static inline void sysHealthCheck(float pressureThreshold) {
       thermoTimer = millis() + GET_KTYPE_READ_EVERY;
     }
   }
+#endif
 
   /*Shut down heaters if steam has been ON and unused fpr more than 10 minutes.*/
   while (currentState.isSteamForgottenON) {
@@ -839,7 +856,6 @@ static inline void sysHealthCheck(float pressureThreshold) {
   // HX_SYSTEM temp and pressure is heated by main boiler, it is always higher than normal for thermosyphone effect,
   // so we don't want to release pressure
   #ifndef HX_SYSTEM
-  // Should enter the block every "systemHealthTimer" seconds
   releasePressure(pressureThreshold);
   #endif
 
@@ -847,6 +863,7 @@ static inline void sysHealthCheck(float pressureThreshold) {
 }
 
 static void releasePressure(float pressureThreshold) {
+  // Should enter the block every "systemHealthTimer" seconds
   if (millis() >= systemHealthTimer) {
     while (currentState.smoothedPressure >= pressureThreshold && currentState.temperature < 100.f)
     {
@@ -860,7 +877,8 @@ static void releasePressure(float pressureThreshold) {
           lcdRefresh();
           lcdListen();
           sensorsRead();
-          justDoCoffee(runningCfg, currentState, brewActive);
+          lcdTargetState((int)HEATING::MODE_brew); 
+          heaterControl(runningCfg, currentState, brewActive);
           break;
         default:
           sensorsRead();
