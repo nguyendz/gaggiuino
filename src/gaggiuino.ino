@@ -736,7 +736,7 @@ static void manualFlowControl(void) {
 //    float flow_reading = lcdGetManualFlowVol() / 10.f ;
 //    setPumpFlow(flow_reading, 0.f, currentState);
 
-    float manualPercentage = lcdGetManualFlowVol() / 10.f ;
+    float manualPercentage = fminf(1, lcdGetManualFlowVol() / 10.f) ;
     setPumpToRawValue(manualPercentage * PUMP_RANGE);
   } else {
     setPumpOff();
